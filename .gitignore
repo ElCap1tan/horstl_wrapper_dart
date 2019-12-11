@@ -22,3 +22,6 @@ doc/api/
 
 # IntelliJ configuration files.
 .idea/
+
+# Development files
+lib/src/development/creds.dart
