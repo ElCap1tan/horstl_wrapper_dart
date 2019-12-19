@@ -13,7 +13,7 @@ void main() async {
   var menu = await hs.getMenu(DateTime.now());
   print(menu.dishes.length);
   for (var dish in menu.dishes) {
-    print(dish.description);
+    print(dish.imgURL);
   }
   // var src = await hs.getTimeTableSrc();
   // print(src);

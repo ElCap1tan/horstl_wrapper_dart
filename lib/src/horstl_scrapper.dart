@@ -124,12 +124,18 @@ class HorstlScrapper {
     for (var i = 0; i < dishes.length; i++) {
       if (dishes[i].getElementsByClassName('artikel').isNotEmpty) {
         var name = dishes[i].getElementsByClassName('artikel')[0].text
-            .trim().replaceAll('\n', '');
+            .trim();
         var description = dishes[i].getElementsByClassName('descr')[0].text
-            .trim().replaceAll('\n', '');
+            .trim();
         var price = dishes[i].getElementsByClassName('cell3')[0].text
-            .trim().replaceAll('\n', '');
-        var dish = Dish(name, description, price);
+            .trim();
+        var imgURL = 'https://image.freepik.com/free-photo/wooden-texture_1208-334.jpg';
+        var imgTag = dishes[i].getElementsByClassName('thumb');
+        if (imgTag.isNotEmpty) {
+          imgURL = _fixThumbnailURL(imgTag[0].attributes['src']);
+
+        }
+        var dish = Dish(name, description, price, imgURL);
         menu.addDish(dish);
       }
     }
@@ -159,5 +165,9 @@ class HorstlScrapper {
       }
     }, onDone: () => completer.complete(contents.toString()));
     return completer.future;
+  }
+
+  String _fixThumbnailURL(String url) {
+    return url.replaceFirst('/fotos/', '/fotos/big/');
   }
 }
