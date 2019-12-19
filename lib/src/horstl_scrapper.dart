@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:horstl_wrapper/src/models/dish.dart';
+import 'package:horstl_wrapper/src/models/menu.dart';
 import 'package:http/http.dart';
 import 'package:html/parser.dart';
 
@@ -11,6 +13,7 @@ abstract class Pages {
   static final String HOMEPAGE = '/pages/cs/sys/portal/hisinoneStartPage.faces?page=1';
   static final String LOGIN = '/rds?state=user&type=1&category=auth.login';
   static final String TIME_TABLE = '/pages/plan/individualTimetable.xhtml?_flowId=individualTimetableSchedule-flow';
+  static final String MENU = 'http://www.maxmanager.de/daten-extern/sw-giessen/html/speiseplan-render.php';
 }
 
 class HorstlScrapper {
@@ -90,12 +93,47 @@ class HorstlScrapper {
     if (_sessionID == null) {
       await _authenticate();
     }
-    var r = await _session.getUrl(Uri.parse('$_BASE_URL${Pages.TIME_TABLE}'))
+    var response = await _session.getUrl(Uri.parse('$_BASE_URL${Pages.TIME_TABLE}'))
         .then((HttpClientRequest request) {
       request.headers.add('Cookie', 'JSESSIONID=$_sessionID');
       return request.close();
     });
-    return _readResponse(r);
+    return _readResponse(response, utf8.decoder);
+  }
+
+  Future<String> getMenuSrc(DateTime day) async {
+    var body = 'func=make_spl&locId=fulda&lang=de&date=${day.year}-${day.month}-${day.day}';
+    var httpClient = HttpClient();
+    var request = await httpClient.postUrl(Uri.parse(Pages.MENU));
+    request.headers.add('content-type', 'application/x-www-form-urlencoded; charset=utf-8');
+    request.headers.add('Origin', 'http://www.maxmanager.de');
+    request.headers.add('Referer', 'http://www.maxmanager.de/daten-extern/sw-giessen/html/speiseplaene.php?einrichtung=fulda');
+    request.headers.add('Content-Length', body.length);
+    request.add(utf8.encode(body));
+    var response = await request.close();
+    return _readResponse(response, utf8.decoder);
+  }
+
+  Future<Menu> getMenu(DateTime day) async {
+    var menuDoc = parse(await getMenuSrc(day));
+    var dishes = menuDoc.getElementsByTagName('tr');
+    // Remove navigation
+    dishes.removeAt(0);
+    var menu = Menu('${day.year}-${day.month}-${day.day}');
+
+    for (var i = 0; i < dishes.length; i++) {
+      if (dishes[i].getElementsByClassName('artikel').isNotEmpty) {
+        var name = dishes[i].getElementsByClassName('artikel')[0].text
+            .trim().replaceAll('\n', '');
+        var description = dishes[i].getElementsByClassName('descr')[0].text
+            .trim().replaceAll('\n', '');
+        var price = dishes[i].getElementsByClassName('cell3')[0].text
+            .trim().replaceAll('\n', '');
+        var dish = Dish(name, description, price);
+        menu.addDish(dish);
+      }
+    }
+    return menu;
   }
 
   void _authenticate() async {
@@ -112,10 +150,10 @@ class HorstlScrapper {
   }
 
   // Helpers
-  Future<String> _readResponse(HttpClientResponse response) {
+  Future<String> _readResponse(HttpClientResponse response, StreamTransformerBase<List<int>, String> decoder) {
     var completer = Completer<String>();
     var contents = StringBuffer();
-    response.transform(utf8.decoder).listen((data) {
+    response.transform(decoder).listen((data) {
       if (data is String) {
         contents.write(data);
       }

@@ -1,16 +1,16 @@
 import '../../horstl_wrapper.dart';
 
 class TimeTable {
-  String studentName;
-  String _sureName;
-  String _name;
+  String studentName = 'N/A';
+  String _sureName = 'N/A';
+  String _name = 'N/A';
   Map<String, Day> days = {
-    'monday': null,
-    'tuesday': null,
-    'wednesday': null,
-    'thursday': null,
-    'friday': null,
-    'saturday': null,
+    'monday': Day('Mo.', 'N/A'),
+    'tuesday': Day('Di.', 'N/A'),
+    'wednesday': Day('Mi.', 'N/A'),
+    'thursday': Day('Do.', 'N/A'),
+    'friday': Day('Fr.', 'N/A'),
+    'saturday': Day('Sa.', 'N/A'),
   };
 
   TimeTable(String sureName, String name) {

@@ -2,8 +2,8 @@ import 'package:horstl_wrapper/horstl_wrapper.dart';
 
 class Day {
   //FIELDS
-  String _dow = 'N/A';
-  String _date = 'No information available.';
+  String _dow;
+  String _date;
   final List _courses = [];
 
   //CONSTRUCTOR
@@ -16,9 +16,9 @@ class Day {
 
   @override
   String toString() {
-    var separatorLength = 45;
+    var separatorLength = 40;
     var r = '${_capitalize(_dow)} - ${_date}:\n';
-    r += '-' * separatorLength + '\n\n';
+    r += '-' * (separatorLength * 2) + '\n\n';
     if (_courses.isNotEmpty) {
       for (Course c in _courses) {
         r += '~' * separatorLength + '\n';
@@ -29,13 +29,14 @@ class Day {
     else {
       r += 'Nothing to show here. Looks like a free day :)\n\n';
     }
-    r += '-' * separatorLength + '\n\n';
+    r += '-' * (separatorLength * 2) + '\n\n';
     return r;
   }
 
   //SETTERS AND GETTERS
   String dow() => _dow;
   String date() => _date;
+  List courses() => _courses;
   // --------------------------------------------------------------------------
   void setDate(String d) => _date = d;
   void setDOW(String dow) => _dow = dow;
