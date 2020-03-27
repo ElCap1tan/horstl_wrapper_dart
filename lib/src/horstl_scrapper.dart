@@ -43,42 +43,48 @@ class HorstlScrapper {
     var tt = TimeTable(sureName, name);
     var dayLabels = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-    var rawDays = doc.getElementsByClassName('column bank_holiday');
+    var rawDays = doc.getElementsByClassName('column');
     var currentDay = 0;
 
     for (var e in rawDays) {
-      // print(e.text);
       var courses = e.text
-          .replaceFirst('\n' * 31, '')
-          .replaceFirst('\n', '')
+          .replaceFirst('\n' * 2, '')
+          .replaceFirst('\n' * 2, '')
           .replaceAll('Durchführende Dozentinnen/Dozenten: ', '\n')
           .replaceAll('Status: ', '\n')
-          .split('\n\n');
+          .split('\n' * 3);
 
       var dateInfo = courses[0]
           .split('\n').removeAt(0).replaceFirst(' ', '').split(',');
       var dow = dateInfo[0];
       var date = dateInfo[1];
-
       var day = Day(dow, date);
       tt.days[dayLabels[currentDay]] = day;
       currentDay++;
+
       for (var c in courses) {
         var courseLines = c.split('\n');
         if (courseLines.length > 2) {
-          var idName = courseLines[1].split(' ');
-          var kindGroup = courseLines[2].split(',');
+          var idName = courseLines[0].split(' ');
+          var kindGroup = courseLines[1].split(',');
 
           var id = idName[0].trim();
-          var name = idName[1].trim();
+          var name = idName[1];
+          if (idName.length > 2) {
+            for(var i = 2; i < idName.length; i++) {
+              name += ' ${idName[i]}';
+            }
+          }
+
           var kind = kindGroup[0].trim();
           var group = kindGroup[1].trim();
-          var time = courseLines[3].trim();
-          var frequency = courseLines[4].trim();
-          var timePeriod = courseLines[5].trim();
-          var roomInfo = courseLines[6].trim();
-          var docent = courseLines[7].trim();
-          var status = courseLines[8].trim();
+
+          var time = courseLines[2].trim();
+          var frequency = courseLines[3].trim();
+          var timePeriod = courseLines[4].trim();
+          var roomInfo = courseLines[5].trim();
+          var docent = courseLines[6].trim();
+          var status = courseLines[7].trim();
           var warning;
           var course = Course(id, name, kind, group, time, frequency, timePeriod,
               roomInfo, docent, status, warning);
