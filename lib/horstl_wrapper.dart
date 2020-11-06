@@ -3,7 +3,6 @@
 /// More dartdocs go here.
 library horstl_wrapper;
 
-// export 'src/horstl_wrapper_base.dart';
 export 'src/horstl_scrapper.dart';
 export 'src/models/course.dart';
 export 'src/models/day.dart';

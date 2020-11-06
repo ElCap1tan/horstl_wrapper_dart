@@ -9,12 +9,11 @@ void main() async {
   t.days['monday'] = d;
   // print(t.toString());
   var hs = HorstlScrapper(FD_NUMBER, FD_PASSWORD);
-  // var tt = await hs.getTimeTable();
-  var menu = await hs.getMenu(DateTime.now());
-  print(menu.dishes.length);
-  for (var dish in menu.dishes) {
-    print(dish.imgURL);
-  }
-  // var src = await hs.getTimeTableSrc();
-  // print(src);
+  var tt = await hs.getTimeTable();
+  print(tt);
+  // var menu = await hs.getMenu(DateTime.now());
+  // print(menu.dishes.length);
+  // for (var dish in menu.dishes) {
+  //   print(dish.imgURL);
+  // }
 }

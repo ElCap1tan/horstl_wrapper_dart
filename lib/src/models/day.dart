@@ -25,8 +25,7 @@ class Day {
         r += c.toString();
         r += '~' * separatorLength + '\n';
       }
-    }
-    else {
+    } else {
       r += 'Nothing to show here. Looks like a free day :)\n\n';
     }
     r += '-' * (separatorLength * 2) + '\n\n';

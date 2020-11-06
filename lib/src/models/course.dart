@@ -13,8 +13,17 @@ class Course {
   String _warning;
 
   //CONSTRUCTOR
-  Course(String id, String name, String kind, String group, String time, String frequency,
-      String timePeriod, String roomInfo, String docent, String status,
+  Course(
+      String id,
+      String name,
+      String kind,
+      String group,
+      String time,
+      String frequency,
+      String timePeriod,
+      String roomInfo,
+      String docent,
+      String status,
       String warning) {
     _id = id;
     _name = name;
@@ -31,8 +40,7 @@ class Course {
 
   @override
   String toString() {
-    var r =
-        'ID: $_id\n'
+    var r = 'ID: $_id\n'
         'Name: $_name\n'
         'Typ: $_kind\n'
         'Parralelgruppe: $_group\n'
