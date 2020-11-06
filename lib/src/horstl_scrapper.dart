@@ -17,7 +17,7 @@ abstract class Pages {
   static final String TIME_TABLE =
       '/pages/plan/individualTimetable.xhtml?_flowId=individualTimetableSchedule-flow';
   static final String MENU =
-      'http://www.maxmanager.de/daten-extern/sw-giessen/html/speiseplan-render.php';
+      'https://www.studentenwerk-giessen.de/xhr/speiseplan-wochentag.html';
 }
 
 class HorstlScrapper {
@@ -71,67 +71,69 @@ class HorstlScrapper {
       for (var schedule = 0;
           schedule < dayHTML.getElementsByClassName('schedulePanel').length;
           schedule++) {
-        var panel = _getElementById(
-            dayHTML.getElementsByClassName('singleblock ')[schedule],
+        var panel = _getChildById(
+            dayHTML.getElementsByClassName('singleblock')[schedule],
             'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:schedulePanelGroup');
 
-        var id = _getElementById(
-                _getElementById(panel,
+        var id = _getChildById(
+                _getChildById(panel,
                     'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:course_detail_link'),
                 'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:scheduleElementnr_')
-            .text;
+            .text
+            .trim();
 
-        var name = _getElementById(
-                _getElementById(panel,
+        var name = _getChildById(
+                _getChildById(panel,
                     'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:course_detail_link'),
                 'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:scheduleDefaulttext_')
-            .text;
+            .text
+            .trim();
 
-        var kind = _getElementById(panel,
+        var kind = _getChildById(panel,
                 'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:eventtypeShorttext')
             .text
-            .replaceAll(' ', '');
-        var group = _getElementById(panel,
+            .trim();
+        var group = _getChildById(panel,
                 'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:parallelgroupshorttext')
             .text
             .replaceFirst(',', '')
-            .replaceAll(' ', '');
-        var time = _getElementById(
+            .trim();
+        var time = _getChildById(
                 panel.getElementsByClassName('scheduleTimes')[0],
                 'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:times')
             .text
-            .replaceAll(' ', '')
+            .trim()
             .replaceFirst('bis', ' bis ');
-        var frequency = _getElementById(panel,
+        var frequency = _getChildById(panel,
                 'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:rhythmDefaulttext')
             .text
-            .replaceAll(' ', '');
+            .trim();
 
-        var startDate = _getElementById(panel,
+        var startDate = _getChildById(panel,
                 'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:scheduleStartDate')
             .text
-            .replaceAll(' ', '');
+            .trim();
         startDate = startDate != 'N/A' ? startDate : '';
-        var endDate = _getElementById(panel,
+        var endDate = _getChildById(panel,
                 'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:scheduleEndDate')
             .text
-            .replaceAll(' ', '');
+            .trim();
         endDate = endDate != 'N/A' ? endDate : '';
         var timePeriod = startDate +
             (startDate != '' && endDate != '' ? ' - ' : '') +
             endDate;
 
-        var roomInfo = _getElementById(panel,
+        var roomInfo = _getChildById(panel,
                 'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:roomDefaulttext:showRoomDetailLink')
             .text
-            .replaceAll(' ', '');
+            .trim();
         var docent = panel.getElementsByTagName('a')[0].text;
-        var status = _getElementById(
-                _getElementById(panel,
+        var status = _getChildById(
+                _getChildById(panel,
                     'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:scheduleItemWorkstatus'),
                 'plan:schedule:scheduleColumn:$currentDay:termin:$schedule:scheduleItem:workstatusLongtext')
             .text
-            .replaceAll(' ', '');
+            .trim();
 
         var warning;
 
@@ -158,43 +160,37 @@ class HorstlScrapper {
   }
 
   Future<String> _getMenuSrc(DateTime day) async {
-    var body =
-        'func=make_spl&locId=fulda&lang=de&date=${day.year}-${day.month}-${day.day}';
-    var httpClient = HttpClient();
-    var request = await httpClient.postUrl(Uri.parse(Pages.MENU));
-    request.headers.add(
-        'content-type', 'application/x-www-form-urlencoded; charset=utf-8');
-    request.headers.add('Origin', 'http://www.maxmanager.de');
-    request.headers.add('Referer',
-        'http://www.maxmanager.de/daten-extern/sw-giessen/html/speiseplaene.php?einrichtung=fulda');
-    request.headers.add('Content-Length', body.length);
-    request.add(utf8.encode(body));
-    var response = await request.close();
-    return _readResponse(response, utf8.decoder);
+    var body = <String, String>{};
+    body['resources_id'] = '34';
+    body['date'] =
+        '${day.year}-${day.month}-${day.day < 10 ? '0' + day.day.toString() : day.day}';
+    // body['week'] = day.weekOfYear == DateTime.now().weekOfYear ? 'now': 'next';
+    var response = await post(Uri.parse(Pages.MENU), body: body);
+    return response.body;
   }
 
   Future<Menu> getMenu(DateTime day) async {
     var menuDoc = parse(await _getMenuSrc(day));
-    var dishes = menuDoc.getElementsByTagName('tr');
-    // Remove navigation
-    dishes.removeAt(0);
+    var dishes = menuDoc.getElementsByClassName('rowMeal');
     var menu = Menu('${day.year}-${day.month}-${day.day}');
 
     for (var i = 0; i < dishes.length; i++) {
-      if (dishes[i].getElementsByClassName('artikel').isNotEmpty) {
-        var name = dishes[i].getElementsByClassName('artikel')[0].text.trim();
-        var description =
-            dishes[i].getElementsByClassName('descr')[0].text.trim();
-        var price = dishes[i].getElementsByClassName('cell3')[0].text.trim();
-        var imgURL =
-            'https://image.freepik.com/free-photo/wooden-texture_1208-334.jpg';
-        var imgTag = dishes[i].getElementsByClassName('thumb');
-        if (imgTag.isNotEmpty) {
-          imgURL = _fixThumbnailURL(imgTag[0].attributes['src']);
-        }
-        var dish = Dish(name, description, price, imgURL);
-        menu.addDish(dish);
+      var t = dishes[i].getElementsByClassName(
+          'col-12 mb-10 order-12 col-sm-6 order-sm-1 mb-sm-0')[0];
+      var name = t.getElementsByTagName('span')[0].text.trim();
+      var description = t.text.replaceFirst(name, '').trim();
+      var price = dishes[i]
+          .getElementsByClassName('d-block col-12 order-1 d-sm-none pt-2')[1]
+          .text
+          .trim();
+      var imgURL =
+          'https://image.freepik.com/free-photo/wooden-texture_1208-334.jpg';
+      var imgTag = dishes[i].getElementsByTagName('img');
+      if (imgTag.isNotEmpty) {
+        imgURL = imgTag[0].attributes['src'];
       }
+      var dish = Dish(name, description, price, imgURL);
+      menu.addDish(dish);
     }
     return menu;
   }
@@ -225,12 +221,8 @@ class HorstlScrapper {
     return completer.future;
   }
 
-  String _fixThumbnailURL(String url) {
-    return url.replaceFirst('/fotos/', '/fotos/big/');
-  }
-
-  Element _getElementById(Element e, String id) {
-    return e.nodes.firstWhere((node) {
+  Element _getChildById(Element child, String id) {
+    return child.nodes.firstWhere((node) {
       if (node.attributes.containsKey('id')) {
         return node.attributes['id'] == id;
       }

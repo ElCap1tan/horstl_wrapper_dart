@@ -11,7 +11,10 @@ void main() async {
   var hs = HorstlScrapper(FD_NUMBER, FD_PASSWORD);
   var tt = await hs.getTimeTable();
   print(tt);
-  // var menu = await hs.getMenu(DateTime.now());
+  var menu = await hs.getMenu(DateTime.now());
+  menu.dishes.forEach((d) {
+    print(d.name);
+  });
   // print(menu.dishes.length);
   // for (var dish in menu.dishes) {
   //   print(dish.imgURL);
