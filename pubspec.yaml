@@ -1,11 +1,11 @@
 name: horstl_wrapper
-description: Dart wrapper for the online student organization system (horstl.hs-fulda.de) and WebMail (webmail.hs-fulda.de) of the University Fulda..
+description: Wrapper for the online student organization system (horstl.hs-fulda.de) of the University Fulda.
 # version: 0.0.1
 # homepage: https://elcapitan.io
-# author: Yannic Wehner<yannic.wehner@protonmail.com>
+# author: Yannic Wehner<yannic.wehner@pm.me>
 
 environment:
-  sdk: '>=2.5.0 <3.0.0'
+  sdk: '>=2.6.0 <3.0.0'
 
 dependencies:
   http: ^0.12.0+2

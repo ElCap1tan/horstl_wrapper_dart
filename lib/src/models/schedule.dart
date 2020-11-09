@@ -16,12 +16,31 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see https://www.gnu.org/licenses/.
 
-class Dish {
-  // FIELDS
-  String imgURL;
-  String name;
-  String description;
-  String price;
+import 'package:horstl_wrapper/horstl_wrapper.dart';
 
-  Dish(this.name, this.description, this.price, this.imgURL);
+class Schedule {
+  String studentName = 'N/A';
+  String _sureName = 'N/A';
+  String _name = 'N/A';
+  Map<String, Day> days = {
+    'monday': Day('Mo.', 'N/A'),
+    'tuesday': Day('Di.', 'N/A'),
+    'wednesday': Day('Mi.', 'N/A'),
+    'thursday': Day('Do.', 'N/A'),
+    'friday': Day('Fr.', 'N/A'),
+    'saturday': Day('Sa.', 'N/A'),
+  };
+
+  Schedule(String sureName, String name) {
+    _sureName = sureName;
+    _name = name;
+    studentName = '$_name $_sureName';
+  }
+
+  @override
+  String toString() {
+    var r = '$studentName\n\n';
+    days.forEach((k, d) => r += '${d}\n\n\n');
+    return r;
+  }
 }

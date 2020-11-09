@@ -1,9 +1,24 @@
+// horstl_wrapper - Wrapper for the online student organization
+// system (horstl.hs-fulda.de) of the University Fulda.
+//
+// Copyright (C) 2020  Yannic Wehner
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see https://www.gnu.org/licenses/.
+
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:horstl_wrapper/src/models/dish.dart';
-import 'package:horstl_wrapper/src/models/menu.dart';
 import 'package:html/dom.dart';
 import 'package:http/http.dart';
 import 'package:html/parser.dart';
@@ -25,15 +40,19 @@ class HorstlScrapper {
   String _fdNumber;
   String _passWord;
   String _sessionID;
-  final HttpClient _session = HttpClient();
 
   HorstlScrapper(String fdNumber, String passWord) {
     _fdNumber = fdNumber;
     _passWord = passWord;
   }
 
-  Future<TimeTable> getTimeTable() async {
-    var doc = parse(await _getTimeTableSrc());
+  Future<Schedule> getScheduleForCurrentWeek() async {
+    var today = DateTime.now();
+    return getScheduleForWeek(today.weekOfYear, today.year);
+  }
+
+  Future<Schedule> getScheduleForWeek(int calendarWeek, int year) async {
+    var doc = parse(await _getScheduleSrc(calendarWeek, year));
 
     var greeting = doc.getElementById('hisinoneTitle').text;
     var names = greeting
@@ -44,7 +63,7 @@ class HorstlScrapper {
     var sureName = names[0].trim();
     var name = names[1].trim();
 
-    var tt = TimeTable(sureName, name);
+    var schedule = Schedule(sureName, name);
     var dayLabels = [
       'monday',
       'tuesday',
@@ -67,7 +86,7 @@ class HorstlScrapper {
       var dow = dateInfo[0];
       var date = dateInfo[1];
       var day = Day(dow, date);
-      tt.days[dayLabels[currentDay]] = day;
+      schedule.days[dayLabels[currentDay]] = day;
       for (var schedule = 0;
           schedule < dayHTML.getElementsByClassName('schedulePanel').length;
           schedule++) {
@@ -143,20 +162,93 @@ class HorstlScrapper {
       }
       currentDay++;
     }
-    return tt;
+    return schedule;
   }
 
-  Future<String> _getTimeTableSrc() async {
+  Future<String> _getScheduleSrcOfCurrentWeek() async {
     if (_sessionID == null) {
       await _authenticate();
     }
-    var response = await _session
-        .getUrl(Uri.parse('$_BASE_URL${Pages.TIME_TABLE}'))
-        .then((HttpClientRequest request) {
-      request.headers.add('Cookie', 'JSESSIONID=$_sessionID');
-      return request.close();
-    });
-    return _readResponse(response, utf8.decoder);
+    var headers = <String, String>{'Cookie': 'JSESSIONID=$_sessionID'};
+    var response =
+        await get(Uri.parse('$_BASE_URL${Pages.TIME_TABLE}'), headers: headers);
+    return response.body;
+  }
+
+  Future<String> _getScheduleSrc(int calendarWeek, int year) async {
+    var currentWeekSrc = await _getScheduleSrcOfCurrentWeek();
+    var doc = await parse(currentWeekSrc);
+
+    var greeting = doc.getElementById('hisinoneTitle').text;
+    var names = greeting
+        .replaceFirst('\n			Stundenplan für ', '')
+        .replaceFirst(' ', '')
+        .split(',');
+
+    var sureName = names[0].trim();
+    var name = names[1].trim();
+
+    var today = DateTime.now();
+
+    if (today.weekOfYear == calendarWeek && today.year == year) {
+      return currentWeekSrc;
+    }
+
+    var currentWeekDom = parse(currentWeekSrc);
+    var jsForm = currentWeekDom.getElementById('jsForm');
+    var endpointURL = jsForm.attributes['action'].substring(10);
+    var viewState = endpointURL
+        .substring(endpointURL.lastIndexOf('&') + 1)
+        .replaceFirst('_flowExecutionKey=', '');
+    var authenticityToken =
+        _getChildByAttribute(jsForm, 'name', 'authenticity_token')
+            .attributes['value'];
+
+    var headers = <String, String>{
+      'Cookie': 'JSESSIONID=$_sessionID',
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'Faces-Request': 'partial/ajax',
+      'Accept':
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    };
+    var body = <String, String>{
+      'AJAX:EVENTS_COUNT': '1',
+      'activePageElementId':
+          'plan:scheduleConfiguration:anzeigeoptionen:refreshSelectedWeek',
+      'refreshButtonClickedId': '',
+      'navigationPosition': 'hisinoneMeinStudium,individualTimetableSchedule',
+      'authenticity_token': authenticityToken,
+      'autoScroll': '',
+      'javax.faces.ViewState': viewState,
+      'javax.faces.behavior.event': 'action',
+      'javax.faces.partial.ajax': 'true',
+      'javax.faces.partial.event': 'click',
+      'javax.faces.partial.execute': 'plan',
+      'javax.faces.partial.render': 'plan plan:messages-infobox',
+      'javax.faces.source':
+          'plan:scheduleConfiguration:anzeigeoptionen:refreshSelectWeek',
+      'plan': 'plan',
+      'plan:schedule:scheduleLegend:rhythmLegend:collapsiblePanelCollapsedState':
+          'false',
+      'plan:scheduleConfiguration:anzeigeoptionen:collapsiblePanelCollapsedState':
+          'false',
+      'plan:scheduleConfiguration:anzeigeoptionen:auswahl_zeitraum': 'woche',
+      'plan:scheduleConfiguration:anzeigeoptionen:auswahl_zeitraumInput':
+          'Wochenauswahl',
+      'plan:scheduleConfiguration:anzeigeoptionen:selectWeek':
+          '${calendarWeek}_$year',
+      'plan_SUBMIT': '1',
+      'rfExt': 'null',
+      'DISABLE_VALIDATION': '1',
+    };
+
+    var response = await post(Uri.parse('$_BASE_URL${endpointURL}'),
+        body: body, headers: headers, encoding: Encoding.getByName('utf-8'));
+    var scheduleHTML = '<' +
+        response.body.substring(
+            response.body.indexOf('<![CDATA[') + '<![CDATA['.length + 1);
+    scheduleHTML = scheduleHTML.substring(0, scheduleHTML.indexOf(']]>'));
+    return '<p id="hisinoneTitle">$name,$sureName</p>$scheduleHTML';
   }
 
   Future<String> _getMenuSrc(DateTime day) async {
@@ -186,7 +278,8 @@ class HorstlScrapper {
       var imgURL =
           'https://image.freepik.com/free-photo/wooden-texture_1208-334.jpg';
       var imgTag = dishes[i].getElementsByTagName('img');
-      if (imgTag.isNotEmpty) {
+      if (imgTag.isNotEmpty &&
+          !imgTag[0].attributes['src'].contains('dummyessen')) {
         imgURL = imgTag[0].attributes['src'];
       }
       var dish = Dish(name, description, price, imgURL);
@@ -205,26 +298,12 @@ class HorstlScrapper {
     var r = await cli.post(loginURL, body: formData);
     var cookies = r.headers['set-cookie'].split(';');
     _sessionID = cookies[0].substring(0, cookies[0].length).split('=')[1];
-    // print(_sessionID);
   }
 
-  // Helpers
-  Future<String> _readResponse(HttpClientResponse response,
-      StreamTransformerBase<List<int>, String> decoder) {
-    var completer = Completer<String>();
-    var contents = StringBuffer();
-    response.transform(decoder).listen((data) {
-      if (data is String) {
-        contents.write(data);
-      }
-    }, onDone: () => completer.complete(contents.toString()));
-    return completer.future;
-  }
-
-  Element _getChildById(Element child, String id) {
-    return child.nodes.firstWhere((node) {
-      if (node.attributes.containsKey('id')) {
-        return node.attributes['id'] == id;
+  Element _getChildByAttribute(Element parent, String attrib, String value) {
+    return parent.nodes.firstWhere((node) {
+      if (node.attributes.containsKey(attrib)) {
+        return node.attributes[attrib] == value;
       }
       return false;
     }, orElse: () {
@@ -232,5 +311,9 @@ class HorstlScrapper {
       e.text = 'N/A';
       return e;
     });
+  }
+
+  Element _getChildById(Element child, String id) {
+    return _getChildByAttribute(child, 'id', id);
   }
 }
